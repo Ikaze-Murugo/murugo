@@ -2,6 +2,16 @@ import { NextResponse } from 'next/server';
 import { supabase } from '@/utils/supabaseClient';
 
 export async function PUT(request, { params }) {
+  // Skip execution during build time if environment variables are not set
+  if (process.env.NODE_ENV === 'production' && 
+      (!process.env.NEXT_PUBLIC_SUPABASE_URL || 
+       process.env.NEXT_PUBLIC_SUPABASE_URL.includes('placeholder'))) {
+    return NextResponse.json(
+      { error: 'Service not available during build' },
+      { status: 503 }
+    );
+  }
+
   try {
     const { id } = params;
     const formData = await request.json();

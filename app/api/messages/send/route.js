@@ -3,6 +3,16 @@ import { supabase } from '@/utils/supabaseClient';
 import emailjs from '@emailjs/nodejs';
 
 export async function POST(request) {
+  // Skip execution during build time if environment variables are not set
+  if (process.env.NODE_ENV === 'production' && 
+      (!process.env.NEXT_PUBLIC_SUPABASE_URL || 
+       process.env.NEXT_PUBLIC_SUPABASE_URL.includes('placeholder'))) {
+    return NextResponse.json(
+      { error: 'Service not available during build' },
+      { status: 503 }
+    );
+  }
+
   try {
     const messageData = await request.json();
 
