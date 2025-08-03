@@ -1,11 +1,77 @@
 "use client";
-import { filterOptions, properties } from "@/data/properties";
+import { filterOptions, properties as dummyProperties } from "@/data/properties";
+import { getFeaturedProperties } from "@/utils/propertyQueries";
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
+
 export default function Properties() {
   const [selectedOption, setSelectedOption] = useState(filterOptions[0]);
-  const [filtered, setFiltered] = useState(properties);
+  const [filtered, setFiltered] = useState(dummyProperties);
+  const [properties, setProperties] = useState(dummyProperties);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    fetchProperties();
+  }, []);
+
+  const fetchProperties = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      console.log('Fetching featured properties...');
+      
+      const { data, error } = await getFeaturedProperties(6);
+      
+      console.log('Featured properties response:', { data, error });
+      
+      if (error) {
+        console.error('Error fetching properties:', error);
+        setError(error.message || 'Failed to load properties');
+        // Keep using dummy data
+        setProperties(dummyProperties);
+        setFiltered(dummyProperties);
+      } else if (!data || data.length === 0) {
+        console.log('No properties found in database, using dummy data');
+        setProperties(dummyProperties);
+        setFiltered(dummyProperties);
+      } else {
+        console.log('Properties loaded from database:', data.length);
+        // Transform database properties to match the expected format
+        const transformedProperties = data.map(property => ({
+          id: property.id,
+          imgSrc: property.images?.[0]?.url || "/images/home/house-1.jpg",
+          alt: property.title || "Property",
+          address: property.address || "Address not available",
+          title: property.title || "Property",
+          beds: property.bedrooms || 0,
+          rooms: property.total_rooms || 0,
+          baths: property.bathrooms || 0,
+          sqft: property.square_feet || 0,
+          tags: property.status === 'featured' ? ["Featured"] : [],
+          avatar: property.owner?.avatar_url || "/images/avatar/avt-png1.png",
+          agent: property.owner?.name || "Agent",
+          price: property.price || 0,
+          filterOptions: [property.property_type || "House"],
+          type: [property.property_type || "House"],
+          features: property.amenities?.map(a => a.amenity?.name) || []
+        }));
+        
+        setProperties(transformedProperties);
+        setFiltered(transformedProperties);
+      }
+    } catch (error) {
+      console.error('Error in fetchProperties:', error);
+      setError(error.message || 'Failed to load properties');
+      // Keep using dummy data
+      setProperties(dummyProperties);
+      setFiltered(dummyProperties);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (selectedOption == "View All") {
       setFiltered(properties);
@@ -14,7 +80,7 @@ export default function Properties() {
         properties.filter((el) => el.filterOptions.includes(selectedOption))
       );
     }
-  }, [selectedOption]);
+  }, [selectedOption, properties]);
 
   return (
     <section className="flat-section flat-recommended">
@@ -22,6 +88,19 @@ export default function Properties() {
         <div className="box-title text-center wow fadeInUp">
           <div className="text-subtitle text-primary">Featured Properties</div>
           <h3 className="mt-4 title">Recommended For You</h3>
+          {loading && (
+            <div className="text-center mt-3">
+              <div className="spinner-border spinner-border-sm text-primary" role="status">
+                <span className="visually-hidden">Loading...</span>
+              </div>
+              <small className="text-muted">Loading from database...</small>
+            </div>
+          )}
+          {error && (
+            <div className="text-center mt-3">
+              <small className="text-danger">Using demo data (database not available locally)</small>
+            </div>
+          )}
         </div>
         <div
           className="flat-tab-recommended flat-animate-tab wow fadeInUp"
@@ -59,7 +138,7 @@ export default function Properties() {
                             <Image
                               className="lazyload"
                               data-src={property.imgSrc}
-                              alt={""}
+                              alt={property.alt}
                               src={property.imgSrc}
                               width={615}
                               height={405}
@@ -67,7 +146,9 @@ export default function Properties() {
                           </div>
                           <div className="top">
                             <ul className="d-flex gap-6">
-                              <li className="flag-tag primary">Featured</li>
+                              {property.tags.map((tag, tagIndex) => (
+                                <li key={tagIndex} className="flag-tag primary">{tag}</li>
+                              ))}
                               <li className="flag-tag style-1">For Sale</li>
                             </ul>
                           </div>
@@ -100,26 +181,23 @@ export default function Properties() {
                       <div className="archive-bottom">
                         <div className="content-top">
                           <h6 className="text-capitalize">
-                            <Link
-                              href={`/property-details-v1/${property.id}`}
-                              className="link"
-                            >
+                            <Link className="link" href={`/property-details-v1/${property.id}`}>
                               {property.title}
                             </Link>
                           </h6>
                           <ul className="meta-list">
                             <li className="item">
-                              <i className="icon icon-bed" />
+                              <i className="icon icon-bed"></i>
                               <span className="text-variant-1">Beds:</span>
                               <span className="fw-6">{property.beds}</span>
                             </li>
                             <li className="item">
-                              <i className="icon icon-bath" />
+                              <i className="icon icon-bath"></i>
                               <span className="text-variant-1">Baths:</span>
                               <span className="fw-6">{property.baths}</span>
                             </li>
                             <li className="item">
-                              <i className="icon icon-sqft" />
+                              <i className="icon icon-sqft"></i>
                               <span className="text-variant-1">Sqft:</span>
                               <span className="fw-6">{property.sqft}</span>
                             </li>
@@ -137,9 +215,7 @@ export default function Properties() {
                             </div>
                             <span>{property.agent}</span>
                           </div>
-                          <h6 className="price">
-                            ${property.price.toFixed(2)}
-                          </h6>
+                          <h6 className="price">${property.price.toLocaleString()}</h6>
                         </div>
                       </div>
                     </div>
@@ -147,12 +223,9 @@ export default function Properties() {
                 ))}
               </div>
               <div className="text-center">
-                <Link
-                  href={`/sidebar-grid`}
-                  className="tf-btn btn-view primary size-1 hover-btn-view"
-                >
+                <Link className="tf-btn btn-view primary size-1 hover-btn-view" href="/sidebar-grid">
                   View All Properties
-                  <span className="icon icon-arrow-right2" />
+                  <span className="icon icon-arrow-right2"></span>
                 </Link>
               </div>
             </div>

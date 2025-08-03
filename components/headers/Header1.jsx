@@ -42,13 +42,6 @@ export default function Header1({
                         height={48}
                         src="/images/logo/logo@2x.png"
                       />
-                      <Image
-                        alt="logo"
-                        width={166}
-                        className="logo-2"
-                        height={48}
-                        src="/images/logo/logo@2x-white.png"
-                      />
                     </Link>
                   </div>
                 </div>
@@ -70,7 +63,7 @@ export default function Header1({
               <div className="inner-header-right header-account">
                 <UserMenu />
                 <div className="flat-bt-top">
-                  <Link className="tf-btn primary" href={`/add-property`}>
+                  <Link className="tf-btn primary" href={`/submit-property`}>
                     <svg
                       width={21}
                       height={20}
@@ -139,7 +132,7 @@ export default function Header1({
               <MobileNav />
             </div>
             <div className="button-mobi-sell">
-              <Link className="tf-btn primary" href={`/add-property`}>
+              <Link className="tf-btn primary" href={`/submit-property`}>
                 Submit Property
               </Link>
             </div>

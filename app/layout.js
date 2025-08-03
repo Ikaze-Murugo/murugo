@@ -3,7 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.scss";
 import "bootstrap/dist/css/bootstrap.min.css";
 import { AuthProvider } from "@/context/AuthContext";
-import AdminNavigation from "@/components/common/AdminNavigation";
+// import AdminNavigation from "@/components/common/AdminNavigation";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -26,7 +26,7 @@ export default function RootLayout({ children }) {
       </head>
       <body className={inter.className}>
         <AuthProvider>
-          <AdminNavigation />
+          {/* <AdminNavigation /> */}
           {children}
         </AuthProvider>
         

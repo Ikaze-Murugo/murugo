@@ -9,14 +9,7 @@ export default function UserMenu() {
     await signOut();
   };
 
-  if (loading) {
-    return (
-      <div className="spinner-border spinner-border-sm" role="status">
-        <span className="visually-hidden">Loading...</span>
-      </div>
-    );
-  }
-
+  // Show login/register buttons immediately instead of loading spinner
   if (!user) {
     return (
       <div className="d-flex align-items-center gap-2">
@@ -104,53 +97,12 @@ export default function UserMenu() {
         )}
         <li><hr className="dropdown-divider" /></li>
         <li>
-          <button
-            className="dropdown-item text-danger"
-            onClick={handleSignOut}
-          >
+          <button className="dropdown-item text-danger" onClick={handleSignOut}>
             <i className="icon icon-logout me-2"></i>
             Sign Out
           </button>
         </li>
       </ul>
-
-      <style jsx>{`
-        .avatar-circle {
-          width: 32px;
-          height: 32px;
-          border-radius: 50%;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          color: white;
-          font-weight: bold;
-          font-size: 14px;
-        }
-        .dropdown-menu {
-          min-width: 250px;
-          border: none;
-          box-shadow: 0 10px 40px rgba(0,0,0,0.1);
-          border-radius: 12px;
-        }
-        .dropdown-item {
-          padding: 10px 20px;
-          border-radius: 8px;
-          margin: 2px 8px;
-        }
-        .dropdown-item:hover {
-          background-color: #f8f9fa;
-        }
-        .dropdown-header {
-          padding: 15px 20px 10px;
-          border-bottom: 1px solid #eee;
-          margin-bottom: 5px;
-        }
-        .badge {
-          font-size: 10px;
-          font-weight: normal;
-        }
-      `}</style>
     </div>
   );
 }
