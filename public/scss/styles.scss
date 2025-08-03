@@ -10,3 +10,8 @@
 // Import main styles
 @import "./app.scss";
 @import "./custom.scss";
+
+// component imports
+@import 'components/_favorites.scss';
+@import 'components/_maps.scss';
+@import 'components/_admin.scss';

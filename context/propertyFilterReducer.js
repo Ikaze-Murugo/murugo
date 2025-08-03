@@ -1,5 +1,4 @@
-import { allProperties } from "@/data/properties";
-
+// context/propertyFilterReducer.js
 export const initialState = {
   price: [1800, 5500],
   size: [800, 2200],
@@ -8,11 +7,13 @@ export const initialState = {
   bathrooms: "All",
   type: "All",
   features: [],
-  filtered: allProperties,
+  filtered: [],
   sortingOption: "Sort by (Default)",
-  sorted: allProperties,
+  sorted: [],
   currentPage: 1,
   itemPerPage: 6,
+  loading: false,
+  error: null,
 };
 
 export function reducer(state, action) {
@@ -41,6 +42,18 @@ export function reducer(state, action) {
       return { ...state, currentPage: action.payload };
     case "SET_ITEM_PER_PAGE":
       return { ...state, itemPerPage: action.payload };
+    case "SET_LOADING":
+      return { ...state, loading: action.payload };
+    case "SET_ERROR":
+      return { ...state, error: action.payload };
+    case "SET_PROPERTIES":
+      return { 
+        ...state, 
+        filtered: [...action.payload], 
+        sorted: [...action.payload],
+        loading: false,
+        error: null 
+      };
     case "CLEAR_FILTER":
       return {
         ...state,
