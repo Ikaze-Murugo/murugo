@@ -10,18 +10,18 @@ const getSupabaseClient = () => {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-  // Check if we're in a build environment with placeholder values
-  const isBuildEnvironment = process.env.NODE_ENV === 'production' && 
-    (!supabaseUrl || supabaseUrl.includes('placeholder') || 
-     !supabaseAnonKey || supabaseAnonKey.includes('placeholder'));
+  // Check if we have valid environment variables
+  const hasValidEnvVars = supabaseUrl && supabaseAnonKey && 
+    !supabaseUrl.includes('placeholder') && 
+    !supabaseAnonKey.includes('placeholder');
 
-  // Only throw error if we're not in a build environment
-  if (!isBuildEnvironment && (!supabaseUrl || !supabaseAnonKey)) {
-    throw new Error('Missing Supabase environment variables');
-  }
-
-  // Create a mock client for build environment
-  if (isBuildEnvironment) {
+  // If we have valid environment variables, use real client
+  if (hasValidEnvVars) {
+    console.log('Using real Supabase client');
+    supabaseInstance = createClient(supabaseUrl, supabaseAnonKey);
+  } else {
+    // Use mock client for build environment or missing env vars
+    console.log('Using mock Supabase client (no valid env vars)');
     supabaseInstance = {
       from: () => ({
         select: () => Promise.resolve({ data: [], error: null }),
@@ -55,8 +55,6 @@ const getSupabaseClient = () => {
       },
       rpc: () => Promise.resolve({ data: null, error: null })
     };
-  } else {
-    supabaseInstance = createClient(supabaseUrl, supabaseAnonKey);
   }
 
   return supabaseInstance;

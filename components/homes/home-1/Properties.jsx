@@ -1,6 +1,6 @@
 "use client";
 import { filterOptions, properties as dummyProperties } from "@/data/properties";
-import { getFeaturedProperties } from "@/utils/propertyQueries";
+import { getFeaturedProperties, getAnyProperties } from "@/utils/propertyQueries";
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
@@ -11,34 +11,57 @@ export default function Properties() {
   const [properties, setProperties] = useState(dummyProperties);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [dbStatus, setDbStatus] = useState(null);
 
   useEffect(() => {
     fetchProperties();
+    testDatabaseConnection();
   }, []);
+
+  const testDatabaseConnection = async () => {
+    try {
+      console.log('Testing database connection...');
+      const { supabase } = await import('@/utils/supabaseClient');
+      
+      // Test basic connection
+      const { data, error } = await supabase
+        .from('properties')
+        .select('id, title')
+        .limit(1);
+      
+      console.log('Database connection test:', { data, error });
+      setDbStatus({ data, error });
+    } catch (err) {
+      console.error('Database connection test failed:', err);
+      setDbStatus({ error: err.message });
+    }
+  };
 
   const fetchProperties = async () => {
     try {
       setLoading(true);
       setError(null);
-      console.log('Fetching featured properties...');
+      console.log('Fetching properties...');
       
+      // Try to get any properties first (for testing)
+      const { data: anyData, error: anyError } = await getAnyProperties(6);
+      console.log('Any properties result:', { anyData, anyError });
+      
+      // Then try featured properties
       const { data, error } = await getFeaturedProperties(6);
-      
-      console.log('Featured properties response:', { data, error });
+      console.log('Featured properties result:', { data, error });
       
       if (error) {
         console.error('Error fetching properties:', error);
         setError(error.message || 'Failed to load properties');
-        // Keep using dummy data
         setProperties(dummyProperties);
         setFiltered(dummyProperties);
       } else if (!data || data.length === 0) {
-        console.log('No properties found in database, using dummy data');
+        console.log('No featured properties found, using dummy data');
         setProperties(dummyProperties);
         setFiltered(dummyProperties);
       } else {
         console.log('Properties loaded from database:', data.length);
-        // Transform database properties to match the expected format
         const transformedProperties = data.map(property => ({
           id: property.id,
           imgSrc: property.images?.[0]?.url || "/images/home/house-1.jpg",
@@ -64,7 +87,6 @@ export default function Properties() {
     } catch (error) {
       console.error('Error in fetchProperties:', error);
       setError(error.message || 'Failed to load properties');
-      // Keep using dummy data
       setProperties(dummyProperties);
       setFiltered(dummyProperties);
     } finally {
@@ -98,7 +120,14 @@ export default function Properties() {
           )}
           {error && (
             <div className="text-center mt-3">
-              <small className="text-danger">Using demo data (database not available locally)</small>
+              <small className="text-danger">Error: {error}</small>
+            </div>
+          )}
+          {dbStatus && (
+            <div className="text-center mt-3">
+              <small className="text-info">
+                DB Status: {dbStatus.error ? `Error: ${dbStatus.error}` : `Connected (${dbStatus.data?.length || 0} properties found)`}
+              </small>
             </div>
           )}
         </div>

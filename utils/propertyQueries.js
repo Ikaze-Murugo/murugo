@@ -434,8 +434,68 @@ export async function getPropertyById(id) {
   }
 }
 
+// Add this function for testing - gets any properties regardless of status
+export async function getAnyProperties(limit = 8) {
+  try {
+    console.log('Fetching any properties from database...');
+    
+    const { data, error } = await supabase
+      .from('properties')
+      .select(`
+        *,
+        owner:users!properties_owner_id_fkey (
+          id,
+          name,
+          email,
+          phone_number,
+          avatar_url
+        ),
+        images (
+          id,
+          url,
+          thumbnail_url,
+          alt,
+          is_primary,
+          sort_order
+        ),
+        property_amenities (
+          amenities (
+            id,
+            name
+          )
+        )
+      `)
+      .order('created_at', { ascending: false })
+      .limit(limit);
+
+    console.log('Any properties query result:', { data, error });
+
+    if (error) {
+      console.error('Error fetching any properties:', error);
+      return { data: [], error };
+    }
+
+    return { data: data?.map(transformPropertyData) || [], error: null };
+  } catch (error) {
+    console.error('Error in getAnyProperties:', error);
+    return { data: [], error };
+  }
+}
+
 export async function getFeaturedProperties(limit = 8) {
   try {
+    console.log('Fetching featured properties from database...');
+    
+    // First, let's check if there are any properties at all
+    const { data: allProperties, error: allError } = await supabase
+      .from('properties')
+      .select('id, title, status, is_featured')
+      .limit(5);
+
+    console.log('All properties in database:', allProperties);
+    console.log('All properties error:', allError);
+
+    // Now try the original query
     const { data, error } = await supabase
       .from('properties')
       .select(`
@@ -466,6 +526,8 @@ export async function getFeaturedProperties(limit = 8) {
       .eq('is_featured', true)
       .order('created_at', { ascending: false })
       .limit(limit);
+
+    console.log('Featured properties query result:', { data, error });
 
     if (error) {
       console.error('Error fetching featured properties:', error);
