@@ -1,1 +1,60 @@
- 
+/* ---------------------------------------------------------
+    * Name: Homelengo
+    * Version: 1.0.1
+    * Author: Themesflat
+    * Author URI: http://themesflat.com 
+
+    * Abstracts variable
+    
+    * Reset css styles
+
+    * Components
+        * header
+        * footer
+        * tabs
+        * slider banner
+        * button
+        * range slider
+        * form
+        * nice select
+        * carousel
+        * avatar
+        * off canvas
+        * hover
+        * preloader
+
+    * section
+
+    * dashboard
+
+    * Responsive
+ ------------------------------------------------------------------------------ */
+
+/*--------- Abstracts variable ---------- */
+@import "../public/scss/abstracts/index";
+
+/*---------- Reset css styles ----------- */
+@import "../public/scss/reset";
+
+/*------------ Components ---------------- */
+@import "../public/scss/component/index";
+
+/*-------------- section ----------------- */
+@import "../public/scss/section";
+
+/*--------------- dashboard ---------------- */
+@import "../public/scss/dashboard";
+
+/*-------------- Responsive ----------------- */
+@import "../public/scss/responsive";
+
+/* Import custom styles */
+@import "../public/scss/custom";
+
+/* Import fonts */
+@import url("/fonts/fonts.css");
+@import url("/fonts/font-icons.css");
+
+/* Import CSS libraries */
+@import url("/css/swiper-bundle.min.css");
+@import url("/css/animate.css"); 
