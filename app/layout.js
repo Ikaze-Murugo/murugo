@@ -19,6 +19,7 @@ export default function RootLayout({ children }) {
         <link rel="stylesheet" href="/css/bootstrap.min.css" />
         <link rel="stylesheet" href="/css/swiper-bundle.min.css" />
         <link rel="stylesheet" href="/css/animate.css" />
+        <link rel="stylesheet" href="/css/app.css" />
         <link rel="stylesheet" href="/css/theme.css" />
         <link rel="stylesheet" href="/fonts/fonts.css" />
         <link rel="stylesheet" href="/fonts/font-icons.css" />
