@@ -434,43 +434,6 @@ export async function getPropertyById(id) {
   }
 }
 
-export async function getPropertiesByOwner(ownerId, includeStatus = ['pending', 'approved', 'rejected', 'draft']) {
-  try {
-    const { data, error } = await supabase
-      .from('properties')
-      .select(`
-        *,
-        images (
-          id,
-          url,
-          thumbnail_url,
-          alt,
-          is_primary,
-          sort_order
-        ),
-        property_amenities (
-          amenities (
-            id,
-            name
-          )
-        )
-      `)
-      .eq('owner_id', ownerId)
-      .in('status', includeStatus)
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      console.error('Error fetching owner properties:', error);
-      return { data: [], error };
-    }
-
-    return { data: data?.map(transformPropertyData) || [], error: null };
-  } catch (error) {
-    console.error('Error in getPropertiesByOwner:', error);
-    return { data: [], error };
-  }
-}
-
 export async function getFeaturedProperties(limit = 8) {
   try {
     const { data, error } = await supabase

@@ -380,6 +380,40 @@ export async function markMessageAsRead(messageId) {
   }
 }
 
+export async function updateMessageStatus(messageId, status, adminId, notes = '') {
+  try {
+    const updates = {
+      status,
+      updated_at: new Date().toISOString()
+    };
+
+    if (status === 'read') {
+      updates.is_read = true;
+    }
+
+    if (notes) {
+      updates.admin_notes = notes;
+    }
+
+    const { data, error } = await supabase
+      .from('messages')
+      .update(updates)
+      .eq('id', messageId)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error updating message status:', error);
+      return { data: null, error };
+    }
+
+    return { data, error: null };
+  } catch (error) {
+    console.error('Error in updateMessageStatus:', error);
+    return { data: null, error };
+  }
+}
+
 // =============================================
 // ADMIN REVIEW MANAGEMENT
 // =============================================
