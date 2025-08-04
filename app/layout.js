@@ -1,15 +1,13 @@
 // app/layout.js
 import { Inter } from "next/font/google";
-import "./globals.scss";
-import "bootstrap/dist/css/bootstrap.min.css";
 import { AuthProvider } from "@/context/AuthContext";
 // import AdminNavigation from "@/components/common/AdminNavigation";
 
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata = {
-  title: "Real Estate Platform",
-  description: "Find your perfect home with our comprehensive real estate platform",
+  title: "Murugo - Rwanda Real Estate Platform",
+  description: "Find your perfect home in Rwanda with Murugo, the premier real estate platform",
 };
 
 export default function RootLayout({ children }) {

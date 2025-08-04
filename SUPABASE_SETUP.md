@@ -2,6 +2,20 @@
 
 ## Database Schema and RLS Policies
 
+### 0. Clean Up Existing Tables (Run this first if you have existing tables)
+
+```sql
+-- Drop existing tables if they exist (run this first)
+DROP TABLE IF EXISTS favorites CASCADE;
+DROP TABLE IF EXISTS reviews CASCADE;
+DROP TABLE IF EXISTS messages CASCADE;
+DROP TABLE IF EXISTS property_images CASCADE;
+DROP TABLE IF EXISTS property_amenities CASCADE;
+DROP TABLE IF EXISTS amenities CASCADE;
+DROP TABLE IF EXISTS properties CASCADE;
+DROP TABLE IF EXISTS users CASCADE;
+```
+
 ### 1. Create Tables
 
 ```sql
@@ -96,7 +110,7 @@ CREATE TABLE IF NOT EXISTS properties (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 3. Create amenities table
+-- 3. Create amenities table (FIXED - removed category constraint)
 CREATE TABLE IF NOT EXISTS amenities (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     name VARCHAR(100) NOT NULL,
@@ -168,40 +182,35 @@ CREATE TABLE IF NOT EXISTS favorites (
 ### 2. Insert Sample Data
 
 ```sql
--- Insert basic amenities
+-- Insert basic amenities (FIXED - using valid categories)
 INSERT INTO amenities (name, category, icon, description) VALUES
-('Air Conditioning', 'comfort', 'icon-ac', 'Central air conditioning'),
-('Heating', 'comfort', 'icon-heating', 'Central heating system'),
-('Parking', 'parking', 'icon-parking', 'Parking space available'),
-('Garden', 'outdoor', 'icon-garden', 'Private garden'),
-('Pool', 'outdoor', 'icon-pool', 'Swimming pool'),
+('Air Conditioning', 'interior', 'icon-ac', 'Central air conditioning'),
+('Heating', 'interior', 'icon-heating', 'Central heating system'),
+('Parking', 'exterior', 'icon-parking', 'Parking space available'),
+('Garden', 'exterior', 'icon-garden', 'Private garden'),
+('Pool', 'exterior', 'icon-pool', 'Swimming pool'),
 ('WiFi', 'technology', 'icon-wifi', 'High-speed internet'),
 ('Security System', 'security', 'icon-security', 'Security system installed'),
 ('Furnished', 'furnishing', 'icon-furniture', 'Fully furnished'),
 ('Pet Friendly', 'policies', 'icon-pets', 'Pets allowed'),
-('Balcony', 'outdoor', 'icon-balcony', 'Private balcony'),
+('Balcony', 'exterior', 'icon-balcony', 'Private balcony'),
 ('Electricity', 'utilities', 'icon-electricity', 'Electricity included'),
 ('Water', 'utilities', 'icon-water', 'Water included'),
 ('Internet', 'technology', 'icon-internet', 'Internet connection'),
-('Kitchen', 'amenities', 'icon-kitchen', 'Fully equipped kitchen'),
-('Laundry', 'amenities', 'icon-laundry', 'Laundry facilities')
+('Kitchen', 'interior', 'icon-kitchen', 'Fully equipped kitchen'),
+('Laundry', 'interior', 'icon-laundry', 'Laundry facilities')
 ON CONFLICT DO NOTHING;
 
--- Create a test user (you can delete this later)
-INSERT INTO users (id, email, name, role, verification_status, country) 
-VALUES ('00000000-0000-0000-0000-000000000001', 'admin@murugo.rw', 'Murugo Admin', 'admin', 'verified', 'Rwanda')
-ON CONFLICT (id) DO NOTHING;
-
--- Insert test properties for Rwanda
+-- Create test properties without owner (we'll add them later)
 INSERT INTO properties (
   title, description, property_type, listing_type, status, is_featured,
-  address, city, state_province, zip_postal_code, price, bedrooms, bathrooms, sqft, year_built, owner_id, country
+  address, city, state_province, zip_postal_code, price, bedrooms, bathrooms, sqft, year_built, country
 ) VALUES 
-('Modern Apartment in Kigali', 'Beautiful 2-bedroom apartment in the heart of Kigali city center', 'apartment', 'sale', 'approved', true, '123 KN 4 St, Kigali', 'Kigali', 'Kigali', '00000', 45000000, 2, 2, 120, 2020, '00000000-0000-0000-0000-000000000001', 'Rwanda'),
-('Luxury Villa in Kigali Heights', 'Stunning 4-bedroom villa with private pool and garden in Kigali Heights', 'villa', 'sale', 'approved', true, '456 KG 7 Ave, Kigali Heights', 'Kigali', 'Kigali', '00000', 120000000, 4, 3.5, 280, 2018, '00000000-0000-0000-0000-000000000001', 'Rwanda'),
-('Cozy Studio in Remera', 'Perfect studio apartment for young professionals in Remera', 'studio', 'rent', 'approved', true, '789 KG 12 St, Remera', 'Kigali', 'Kigali', '00000', 180000, 0, 1, 60, 2019, '00000000-0000-0000-0000-000000000001', 'Rwanda'),
-('Family House in Gisozi', 'Spacious 3-bedroom family house in quiet Gisozi neighborhood', 'house', 'sale', 'approved', true, '321 KG 15 Ave, Gisozi', 'Kigali', 'Kigali', '00000', 75000000, 3, 2, 180, 2017, '00000000-0000-0000-0000-000000000001', 'Rwanda'),
-('Commercial Office Space', 'Modern office space in Kigali business district', 'office', 'rent', 'approved', true, '555 KG 8 St, CBD', 'Kigali', 'Kigali', '00000', 500000, 0, 2, 200, 2021, '00000000-0000-0000-0000-000000000001', 'Rwanda')
+('Modern Apartment in Kigali', 'Beautiful 2-bedroom apartment in the heart of Kigali city center', 'apartment', 'sale', 'approved', true, '123 KN 4 St, Kigali', 'Kigali', 'Kigali', '00000', 45000000, 2, 2, 120, 2020, 'Rwanda'),
+('Luxury Villa in Kigali Heights', 'Stunning 4-bedroom villa with private pool and garden in Kigali Heights', 'villa', 'sale', 'approved', true, '456 KG 7 Ave, Kigali Heights', 'Kigali', 'Kigali', '00000', 120000000, 4, 3.5, 280, 2018, 'Rwanda'),
+('Cozy Studio in Remera', 'Perfect studio apartment for young professionals in Remera', 'studio', 'rent', 'approved', true, '789 KG 12 St, Remera', 'Kigali', 'Kigali', '00000', 180000, 0, 1, 60, 2019, 'Rwanda'),
+('Family House in Gisozi', 'Spacious 3-bedroom family house in quiet Gisozi neighborhood', 'house', 'sale', 'approved', true, '321 KG 15 Ave, Gisozi', 'Kigali', 'Kigali', '00000', 75000000, 3, 2, 180, 2017, 'Rwanda'),
+('Commercial Office Space', 'Modern office space in Kigali business district', 'office', 'rent', 'approved', true, '555 KG 8 St, CBD', 'Kigali', 'Kigali', '00000', 500000, 0, 2, 200, 2021, 'Rwanda')
 ON CONFLICT DO NOTHING;
 ```
 
@@ -400,6 +409,26 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 ```
 
+### 5. Create a Trigger to Auto-Create User Profile
+
+```sql
+-- Function to handle new user creation
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS trigger AS $$
+BEGIN
+    INSERT INTO public.users (id, email, name, role)
+    VALUES (new.id, new.email, COALESCE(new.raw_user_meta_data->>'name', ''), 'user');
+    RETURN new;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Trigger for new user creation
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+    AFTER INSERT ON auth.users
+    FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+```
+
 ## Environment Variables for Vercel
 
 Make sure these are set in your Vercel environment variables:
@@ -417,6 +446,7 @@ After running the SQL above:
 1. **Check if tables exist**: Go to Supabase Dashboard → Table Editor
 2. **Test the connection**: The Properties component will show database status
 3. **Verify data**: You should see 5 test properties from Rwanda
+4. **Test registration**: When you register a new user, it should automatically create a profile
 
 The infinite recursion error should be fixed, and the login/register should work properly now.
 
