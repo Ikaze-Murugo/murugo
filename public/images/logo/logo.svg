@@ -1,0 +1,9 @@
+<svg width="150" height="50" viewBox="0 0 150 50" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- House icon -->
+  <path d="M10 25L25 10L40 25V40H10V25Z" fill="#1563DF" stroke="#1563DF" stroke-width="2"/>
+  <path d="M20 30H30V40H20V30Z" fill="white"/>
+  
+  <!-- Text -->
+  <text x="50" y="20" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="#1563DF">MURUGO</text>
+  <text x="50" y="35" font-family="Arial, sans-serif" font-size="10" fill="#666">Rwanda Real Estate</text>
+</svg> 

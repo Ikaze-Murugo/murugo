@@ -1,16 +1,16 @@
-# 🏠 Real Estate Platform - Complete Database Setup
+# Supabase Setup for Murugo - Rwanda Real Estate Platform
 
-## 📊 **FINAL PRODUCTION-READY SCHEMA**
+## Database Schema and RLS Policies
 
-Execute this SQL in your Supabase SQL Editor:
+### 1. Create Tables
 
 ```sql
 -- =============================================
--- 1. ENHANCED CORE TABLES
+-- MURUGO DATABASE SETUP
 -- =============================================
 
--- Enhanced users table with comprehensive user management
-CREATE TABLE users (
+-- 1. Create the users table
+CREATE TABLE IF NOT EXISTS users (
     id UUID REFERENCES auth.users(id) PRIMARY KEY,
     email VARCHAR(255) UNIQUE NOT NULL,
     name VARCHAR(255),
@@ -21,12 +21,12 @@ CREATE TABLE users (
     city VARCHAR(100),
     state_province VARCHAR(100),
     zip_postal_code VARCHAR(20),
-    country VARCHAR(100) DEFAULT 'United States',
+    country VARCHAR(100) DEFAULT 'Rwanda',
     bio TEXT,
-    license_number VARCHAR(100), -- For agents
-    company VARCHAR(255), -- For agents
+    license_number VARCHAR(100),
+    company VARCHAR(255),
     verification_status VARCHAR(20) DEFAULT 'pending' CHECK (verification_status IN ('pending', 'verified', 'rejected')),
-    verification_documents JSONB, -- Store document URLs/info
+    verification_documents JSONB,
     last_login_at TIMESTAMP WITH TIME ZONE,
     is_active BOOLEAN DEFAULT true,
     email_notifications BOOLEAN DEFAULT true,
@@ -35,30 +35,28 @@ CREATE TABLE users (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Enhanced properties table with complete property management
-CREATE TABLE properties (
+-- 2. Create the properties table
+CREATE TABLE IF NOT EXISTS properties (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    owner_id UUID REFERENCES users(id) ON DELETE CASCADE, -- The homeowner who submitted
-    agent_id UUID REFERENCES users(id) ON DELETE SET NULL, -- Optional assigned agent
+    owner_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    agent_id UUID REFERENCES users(id) ON DELETE SET NULL,
     title VARCHAR(255) NOT NULL,
     description TEXT,
     property_type VARCHAR(50) NOT NULL CHECK (property_type IN ('house', 'apartment', 'condo', 'townhouse', 'villa', 'studio', 'office', 'land', 'commercial')),
     listing_type VARCHAR(20) NOT NULL CHECK (listing_type IN ('sale', 'rent', 'lease')),
     status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected', 'active', 'sold', 'rented', 'inactive', 'draft')),
     
-    -- Location details
     address TEXT NOT NULL,
     city VARCHAR(100) NOT NULL,
     state_province VARCHAR(100) NOT NULL,
     zip_postal_code VARCHAR(20) NOT NULL,
-    country VARCHAR(100) DEFAULT 'United States',
+    country VARCHAR(100) DEFAULT 'Rwanda',
     latitude DECIMAL(10, 8),
     longitude DECIMAL(11, 8),
     neighborhood VARCHAR(100),
     
-    -- Property specifications
     price DECIMAL(12, 2) NOT NULL,
-    original_price DECIMAL(12, 2), -- Track price changes
+    original_price DECIMAL(12, 2),
     bedrooms INTEGER,
     bathrooms DECIMAL(3, 1),
     sqft INTEGER,
@@ -68,475 +66,357 @@ CREATE TABLE properties (
     floors INTEGER,
     parking_spaces INTEGER,
     
-    -- Additional details
     is_furnished BOOLEAN DEFAULT false,
     pets_allowed BOOLEAN DEFAULT false,
     smoking_allowed BOOLEAN DEFAULT false,
-    utilities_included JSONB, -- ["electricity", "water", "gas", "internet"]
-    lease_terms JSONB, -- For rentals: minimum lease, deposit info, etc.
+    utilities_included JSONB,
+    lease_terms JSONB,
     
-    -- Homeowner contact preferences
     contact_phone VARCHAR(20),
     contact_email VARCHAR(255),
     preferred_contact_method VARCHAR(20) DEFAULT 'email' CHECK (preferred_contact_method IN ('email', 'phone', 'both')),
-    available_for_viewing JSONB, -- Available days/times for showings
+    available_for_viewing JSONB,
     
-    -- Admin fields
     admin_notes TEXT,
     rejection_reason TEXT,
     approved_by UUID REFERENCES users(id),
     approved_at TIMESTAMP WITH TIME ZONE,
     
-    -- SEO and features
     is_featured BOOLEAN DEFAULT false,
     featured_until TIMESTAMP WITH TIME ZONE,
     virtual_tour_url TEXT,
     video_url TEXT,
     listing_url_slug VARCHAR(255) UNIQUE,
     
-    -- Analytics
     view_count INTEGER DEFAULT 0,
     inquiry_count INTEGER DEFAULT 0,
     favorite_count INTEGER DEFAULT 0,
     
-    -- Timestamps
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    published_at TIMESTAMP WITH TIME ZONE,
-    expires_at TIMESTAMP WITH TIME ZONE
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Property images with enhanced metadata
-CREATE TABLE images (
+-- 3. Create amenities table
+CREATE TABLE IF NOT EXISTS amenities (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    property_id UUID REFERENCES properties(id) ON DELETE CASCADE,
-    url TEXT NOT NULL,
-    thumbnail_url TEXT, -- Optimized small version
-    alt TEXT,
-    caption TEXT,
-    image_type VARCHAR(50) DEFAULT 'interior' CHECK (image_type IN ('exterior', 'interior', 'bathroom', 'kitchen', 'bedroom', 'living_room', 'dining_room', 'garage', 'yard', 'amenity', 'floor_plan', 'other')),
-    sort_order INTEGER DEFAULT 0,
-    is_primary BOOLEAN DEFAULT false,
-    uploaded_by UUID REFERENCES users(id),
-    file_size INTEGER, -- in bytes
-    width INTEGER,
-    height INTEGER,
-    storage_path TEXT, -- Supabase storage path
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- Enhanced amenities with categorization
-CREATE TABLE amenities (
-    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    name VARCHAR(100) UNIQUE NOT NULL,
-    category VARCHAR(50) DEFAULT 'general' CHECK (category IN ('general', 'interior', 'exterior', 'appliances', 'security', 'accessibility', 'community')),
-    icon VARCHAR(100), -- CSS class or icon identifier
+    name VARCHAR(100) NOT NULL,
+    category VARCHAR(50) NOT NULL,
+    icon VARCHAR(50),
     description TEXT,
     is_active BOOLEAN DEFAULT true,
     sort_order INTEGER DEFAULT 0,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Property amenities junction table
-CREATE TABLE property_amenities (
-    property_id UUID REFERENCES properties(id) ON DELETE CASCADE,
-    amenity_id UUID REFERENCES amenities(id) ON DELETE CASCADE,
-    added_by UUID REFERENCES users(id), -- Track who added this amenity
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    PRIMARY KEY (property_id, amenity_id)
-);
-
--- Enhanced messages table for comprehensive communication
-CREATE TABLE messages (
+-- 4. Create property_amenities junction table
+CREATE TABLE IF NOT EXISTS property_amenities (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     property_id UUID REFERENCES properties(id) ON DELETE CASCADE,
-    sender_id UUID REFERENCES users(id) ON DELETE SET NULL,
-    recipient_id UUID REFERENCES users(id) ON DELETE SET NULL, -- Property owner or agent
-    sender_name VARCHAR(255), -- For non-registered users
-    sender_email VARCHAR(255), -- For non-registered users
-    sender_phone VARCHAR(20),
-    subject VARCHAR(255),
-    message TEXT NOT NULL,
-    message_type VARCHAR(50) DEFAULT 'inquiry' CHECK (message_type IN ('inquiry', 'viewing_request', 'offer', 'general', 'admin')),
-    inquiry_details JSONB, -- Store structured inquiry data
-    is_read BOOLEAN DEFAULT false,
-    replied_at TIMESTAMP WITH TIME ZONE,
-    parent_message_id UUID REFERENCES messages(id), -- For threaded conversations
-    status VARCHAR(20) DEFAULT 'sent' CHECK (status IN ('sent', 'delivered', 'read', 'replied', 'archived')),
+    amenity_id UUID REFERENCES amenities(id) ON DELETE CASCADE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(property_id, amenity_id)
+);
+
+-- 5. Create property_images table
+CREATE TABLE IF NOT EXISTS property_images (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    property_id UUID REFERENCES properties(id) ON DELETE CASCADE,
+    url TEXT NOT NULL,
+    thumbnail_url TEXT,
+    alt_text VARCHAR(255),
+    is_primary BOOLEAN DEFAULT false,
+    image_type VARCHAR(50) DEFAULT 'photo',
+    sort_order INTEGER DEFAULT 0,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- Enhanced favorite properties
-CREATE TABLE favorite_properties (
+-- 6. Create messages table
+CREATE TABLE IF NOT EXISTS messages (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    sender_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    receiver_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    property_id UUID REFERENCES properties(id) ON DELETE CASCADE,
+    subject VARCHAR(255),
+    message TEXT NOT NULL,
+    is_read BOOLEAN DEFAULT false,
+    read_at TIMESTAMP WITH TIME ZONE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 7. Create reviews table
+CREATE TABLE IF NOT EXISTS reviews (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    reviewer_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    property_id UUID REFERENCES properties(id) ON DELETE CASCADE,
+    rating INTEGER CHECK (rating >= 1 AND rating <= 5),
+    title VARCHAR(255),
+    comment TEXT,
+    is_approved BOOLEAN DEFAULT false,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 8. Create favorites table
+CREATE TABLE IF NOT EXISTS favorites (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     user_id UUID REFERENCES users(id) ON DELETE CASCADE,
     property_id UUID REFERENCES properties(id) ON DELETE CASCADE,
-    notes TEXT, -- User's private notes about the property
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     UNIQUE(user_id, property_id)
 );
+```
 
--- Enhanced reviews system
-CREATE TABLE reviews (
-    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    property_id UUID REFERENCES properties(id) ON DELETE CASCADE,
-    user_id UUID REFERENCES users(id) ON DELETE SET NULL,
-    reviewer_name VARCHAR(255), -- For non-registered users
-    reviewer_email VARCHAR(255), -- For non-registered users
-    rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
-    title VARCHAR(255),
-    comment TEXT NOT NULL,
-    review_type VARCHAR(50) DEFAULT 'general' CHECK (review_type IN ('general', 'rental_experience', 'viewing_experience', 'agent_review', 'owner_review')),
-    images JSONB, -- Array of image URLs
-    helpful_count INTEGER DEFAULT 0,
-    not_helpful_count INTEGER DEFAULT 0,
-    status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
-    moderated_by UUID REFERENCES users(id),
-    moderated_at TIMESTAMP WITH TIME ZONE,
-    response_from_owner TEXT, -- Owner can respond to reviews
-    response_at TIMESTAMP WITH TIME ZONE,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
+### 2. Insert Sample Data
 
--- Review votes
-CREATE TABLE review_votes (
-    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    review_id UUID REFERENCES reviews(id) ON DELETE CASCADE,
-    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-    is_helpful BOOLEAN NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    UNIQUE(review_id, user_id)
-);
+```sql
+-- Insert basic amenities
+INSERT INTO amenities (name, category, icon, description) VALUES
+('Air Conditioning', 'comfort', 'icon-ac', 'Central air conditioning'),
+('Heating', 'comfort', 'icon-heating', 'Central heating system'),
+('Parking', 'parking', 'icon-parking', 'Parking space available'),
+('Garden', 'outdoor', 'icon-garden', 'Private garden'),
+('Pool', 'outdoor', 'icon-pool', 'Swimming pool'),
+('WiFi', 'technology', 'icon-wifi', 'High-speed internet'),
+('Security System', 'security', 'icon-security', 'Security system installed'),
+('Furnished', 'furnishing', 'icon-furniture', 'Fully furnished'),
+('Pet Friendly', 'policies', 'icon-pets', 'Pets allowed'),
+('Balcony', 'outdoor', 'icon-balcony', 'Private balcony'),
+('Electricity', 'utilities', 'icon-electricity', 'Electricity included'),
+('Water', 'utilities', 'icon-water', 'Water included'),
+('Internet', 'technology', 'icon-internet', 'Internet connection'),
+('Kitchen', 'amenities', 'icon-kitchen', 'Fully equipped kitchen'),
+('Laundry', 'amenities', 'icon-laundry', 'Laundry facilities')
+ON CONFLICT DO NOTHING;
 
--- Property submission workflow tracking
-CREATE TABLE property_submissions (
-    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    property_id UUID REFERENCES properties(id) ON DELETE CASCADE,
-    submitted_by UUID REFERENCES users(id) ON DELETE CASCADE,
-    submission_data JSONB NOT NULL, -- Store original submission data
-    admin_feedback TEXT,
-    status_changes JSONB, -- Track status change history
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
+-- Create a test user (you can delete this later)
+INSERT INTO users (id, email, name, role, verification_status, country) 
+VALUES ('00000000-0000-0000-0000-000000000001', 'admin@murugo.rw', 'Murugo Admin', 'admin', 'verified', 'Rwanda')
+ON CONFLICT (id) DO NOTHING;
 
--- Saved searches for users
-CREATE TABLE saved_searches (
-    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-    name VARCHAR(255) NOT NULL,
-    search_criteria JSONB NOT NULL, -- Store search parameters
-    email_alerts BOOLEAN DEFAULT false,
-    last_notification_sent TIMESTAMP WITH TIME ZONE,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
+-- Insert test properties for Rwanda
+INSERT INTO properties (
+  title, description, property_type, listing_type, status, is_featured,
+  address, city, state_province, zip_postal_code, price, bedrooms, bathrooms, sqft, year_built, owner_id, country
+) VALUES 
+('Modern Apartment in Kigali', 'Beautiful 2-bedroom apartment in the heart of Kigali city center', 'apartment', 'sale', 'approved', true, '123 KN 4 St, Kigali', 'Kigali', 'Kigali', '00000', 45000000, 2, 2, 120, 2020, '00000000-0000-0000-0000-000000000001', 'Rwanda'),
+('Luxury Villa in Kigali Heights', 'Stunning 4-bedroom villa with private pool and garden in Kigali Heights', 'villa', 'sale', 'approved', true, '456 KG 7 Ave, Kigali Heights', 'Kigali', 'Kigali', '00000', 120000000, 4, 3.5, 280, 2018, '00000000-0000-0000-0000-000000000001', 'Rwanda'),
+('Cozy Studio in Remera', 'Perfect studio apartment for young professionals in Remera', 'studio', 'rent', 'approved', true, '789 KG 12 St, Remera', 'Kigali', 'Kigali', '00000', 180000, 0, 1, 60, 2019, '00000000-0000-0000-0000-000000000001', 'Rwanda'),
+('Family House in Gisozi', 'Spacious 3-bedroom family house in quiet Gisozi neighborhood', 'house', 'sale', 'approved', true, '321 KG 15 Ave, Gisozi', 'Kigali', 'Kigali', '00000', 75000000, 3, 2, 180, 2017, '00000000-0000-0000-0000-000000000001', 'Rwanda'),
+('Commercial Office Space', 'Modern office space in Kigali business district', 'office', 'rent', 'approved', true, '555 KG 8 St, CBD', 'Kigali', 'Kigali', '00000', 500000, 0, 2, 200, 2021, '00000000-0000-0000-0000-000000000001', 'Rwanda')
+ON CONFLICT DO NOTHING;
+```
 
--- Property views analytics
-CREATE TABLE property_views (
-    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    property_id UUID REFERENCES properties(id) ON DELETE CASCADE,
-    user_id UUID REFERENCES users(id) ON DELETE SET NULL, -- NULL for anonymous views
-    ip_address INET,
-    user_agent TEXT,
-    referrer TEXT,
-    viewed_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
+### 3. Fix RLS Policies (No Infinite Recursion)
 
--- System notifications
-CREATE TABLE notifications (
-    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-    type VARCHAR(50) NOT NULL CHECK (type IN ('property_approved', 'property_rejected', 'new_message', 'new_review', 'new_inquiry', 'system_update')),
-    title VARCHAR(255) NOT NULL,
-    message TEXT NOT NULL,
-    data JSONB, -- Additional notification data
-    is_read BOOLEAN DEFAULT false,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
--- =============================================
--- 2. INDEXES FOR PERFORMANCE
--- =============================================
-
--- User indexes
-CREATE INDEX idx_users_email ON users(email);
-CREATE INDEX idx_users_role ON users(role);
-CREATE INDEX idx_users_verification_status ON users(verification_status);
-CREATE INDEX idx_users_is_active ON users(is_active);
-
--- Property indexes
-CREATE INDEX idx_properties_owner_id ON properties(owner_id);
-CREATE INDEX idx_properties_agent_id ON properties(agent_id);
-CREATE INDEX idx_properties_status ON properties(status);
-CREATE INDEX idx_properties_listing_type ON properties(listing_type);
-CREATE INDEX idx_properties_property_type ON properties(property_type);
-CREATE INDEX idx_properties_city ON properties(city);
-CREATE INDEX idx_properties_state_province ON properties(state_province);
-CREATE INDEX idx_properties_price ON properties(price);
-CREATE INDEX idx_properties_bedrooms ON properties(bedrooms);
-CREATE INDEX idx_properties_bathrooms ON properties(bathrooms);
-CREATE INDEX idx_properties_sqft ON properties(sqft);
-CREATE INDEX idx_properties_location ON properties USING GIST(point(longitude, latitude));
-CREATE INDEX idx_properties_created_at ON properties(created_at);
-CREATE INDEX idx_properties_published_at ON properties(published_at);
-CREATE INDEX idx_properties_is_featured ON properties(is_featured);
-
--- Image indexes
-CREATE INDEX idx_images_property_id ON images(property_id);
-CREATE INDEX idx_images_sort_order ON images(sort_order);
-CREATE INDEX idx_images_is_primary ON images(is_primary);
-
--- Message indexes
-CREATE INDEX idx_messages_property_id ON messages(property_id);
-CREATE INDEX idx_messages_sender_id ON messages(sender_id);
-CREATE INDEX idx_messages_recipient_id ON messages(recipient_id);
-CREATE INDEX idx_messages_is_read ON messages(is_read);
-CREATE INDEX idx_messages_created_at ON messages(created_at);
-CREATE INDEX idx_messages_parent_id ON messages(parent_message_id);
-
--- Analytics indexes
-CREATE INDEX idx_property_views_property_id ON property_views(property_id);
-CREATE INDEX idx_property_views_viewed_at ON property_views(viewed_at);
-CREATE INDEX idx_notifications_user_id ON notifications(user_id);
-CREATE INDEX idx_notifications_is_read ON notifications(is_read);
-
--- =============================================
--- 3. ROW LEVEL SECURITY (RLS)
--- =============================================
-
+```sql
 -- Enable RLS on all tables
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE properties ENABLE ROW LEVEL SECURITY;
-ALTER TABLE images ENABLE ROW LEVEL SECURITY;
 ALTER TABLE amenities ENABLE ROW LEVEL SECURITY;
 ALTER TABLE property_amenities ENABLE ROW LEVEL SECURITY;
+ALTER TABLE property_images ENABLE ROW LEVEL SECURITY;
 ALTER TABLE messages ENABLE ROW LEVEL SECURITY;
-ALTER TABLE favorite_properties ENABLE ROW LEVEL SECURITY;
 ALTER TABLE reviews ENABLE ROW LEVEL SECURITY;
-ALTER TABLE review_votes ENABLE ROW LEVEL SECURITY;
-ALTER TABLE property_submissions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE saved_searches ENABLE ROW LEVEL SECURITY;
-ALTER TABLE property_views ENABLE ROW LEVEL SECURITY;
-ALTER TABLE notifications ENABLE ROW LEVEL SECURITY;
+ALTER TABLE favorites ENABLE ROW LEVEL SECURITY;
 
--- Users policies
-CREATE POLICY "Users can view their own profile" ON users FOR SELECT USING (auth.uid() = id);
-CREATE POLICY "Users can update their own profile" ON users FOR UPDATE USING (auth.uid() = id);
-CREATE POLICY "Anyone can view verified agents" ON users FOR SELECT USING (role = 'agent' AND verification_status = 'verified');
-CREATE POLICY "Admins can view all users" ON users FOR ALL USING (EXISTS (SELECT 1 FROM users WHERE id = auth.uid() AND role = 'admin'));
+-- Users table policies (FIXED - No infinite recursion)
+CREATE POLICY "Users can view their own profile" ON users
+    FOR SELECT USING (auth.uid() = id);
 
--- Properties policies
-CREATE POLICY "Anyone can view approved properties" ON properties FOR SELECT USING (status = 'approved');
-CREATE POLICY "Property owners can view their own properties" ON properties FOR SELECT USING (auth.uid() = owner_id);
-CREATE POLICY "Property owners can insert their own properties" ON properties FOR INSERT WITH CHECK (auth.uid() = owner_id);
-CREATE POLICY "Property owners can update their own properties" ON properties FOR UPDATE USING (auth.uid() = owner_id);
-CREATE POLICY "Admins can view all properties" ON properties FOR ALL USING (EXISTS (SELECT 1 FROM users WHERE id = auth.uid() AND role = 'admin'));
+CREATE POLICY "Users can update their own profile" ON users
+    FOR UPDATE USING (auth.uid() = id);
 
--- Images policies
-CREATE POLICY "Anyone can view images of approved properties" ON images FOR SELECT USING (
-    EXISTS (SELECT 1 FROM properties WHERE id = property_id AND status = 'approved')
-);
-CREATE POLICY "Property owners can manage their property images" ON images FOR ALL USING (
-    EXISTS (SELECT 1 FROM properties WHERE id = property_id AND owner_id = auth.uid())
-);
-CREATE POLICY "Admins can manage all images" ON images FOR ALL USING (
-    EXISTS (SELECT 1 FROM users WHERE id = auth.uid() AND role = 'admin')
-);
+CREATE POLICY "Users can insert their own profile" ON users
+    FOR INSERT WITH CHECK (auth.uid() = id);
 
--- Amenities policies
-CREATE POLICY "Anyone can view active amenities" ON amenities FOR SELECT USING (is_active = true);
-CREATE POLICY "Admins can manage amenities" ON amenities FOR ALL USING (
-    EXISTS (SELECT 1 FROM users WHERE id = auth.uid() AND role = 'admin')
-);
+-- Properties table policies
+CREATE POLICY "Anyone can view approved properties" ON properties
+    FOR SELECT USING (status = 'approved' OR status = 'active');
 
--- Property amenities policies
-CREATE POLICY "Anyone can view property amenities" ON property_amenities FOR SELECT USING (true);
-CREATE POLICY "Property owners can manage their property amenities" ON property_amenities FOR ALL USING (
-    EXISTS (SELECT 1 FROM properties WHERE id = property_id AND owner_id = auth.uid())
-);
+CREATE POLICY "Users can view their own properties" ON properties
+    FOR SELECT USING (auth.uid() = owner_id);
 
--- Messages policies
-CREATE POLICY "Users can view messages they sent or received" ON messages FOR SELECT USING (
-    auth.uid() = sender_id OR auth.uid() = recipient_id OR
-    EXISTS (SELECT 1 FROM properties WHERE id = property_id AND owner_id = auth.uid())
-);
-CREATE POLICY "Anyone can send messages" ON messages FOR INSERT WITH CHECK (true);
-CREATE POLICY "Recipients can update message read status" ON messages FOR UPDATE USING (
-    auth.uid() = recipient_id OR
-    EXISTS (SELECT 1 FROM properties WHERE id = property_id AND owner_id = auth.uid())
-);
-CREATE POLICY "Admins can view all messages" ON messages FOR ALL USING (
-    EXISTS (SELECT 1 FROM users WHERE id = auth.uid() AND role = 'admin')
-);
+CREATE POLICY "Homeowners and agents can create properties" ON properties
+    FOR INSERT WITH CHECK (
+        auth.uid() = owner_id AND 
+        EXISTS (
+            SELECT 1 FROM users 
+            WHERE id = auth.uid() 
+            AND role IN ('homeowner', 'agent', 'admin')
+        )
+    );
 
--- Favorites policies
-CREATE POLICY "Users can manage their own favorites" ON favorite_properties FOR ALL USING (auth.uid() = user_id);
+CREATE POLICY "Users can update their own properties" ON properties
+    FOR UPDATE USING (auth.uid() = owner_id);
 
--- Reviews policies
-CREATE POLICY "Anyone can view approved reviews" ON reviews FOR SELECT USING (status = 'approved');
-CREATE POLICY "Authenticated users can submit reviews" ON reviews FOR INSERT WITH CHECK (auth.uid() = user_id);
-CREATE POLICY "Users can update their own reviews" ON reviews FOR UPDATE USING (auth.uid() = user_id);
-CREATE POLICY "Admins can manage all reviews" ON reviews FOR ALL USING (
-    EXISTS (SELECT 1 FROM users WHERE id = auth.uid() AND role = 'admin')
-);
+CREATE POLICY "Users can delete their own properties" ON properties
+    FOR DELETE USING (auth.uid() = owner_id);
 
--- Review votes policies
-CREATE POLICY "Users can manage their own votes" ON review_votes FOR ALL USING (auth.uid() = user_id);
+-- Amenities table policies (public read)
+CREATE POLICY "Anyone can view amenities" ON amenities
+    FOR SELECT USING (true);
 
--- Property submissions policies
-CREATE POLICY "Users can view their own submissions" ON property_submissions FOR SELECT USING (auth.uid() = submitted_by);
-CREATE POLICY "Users can create submissions" ON property_submissions FOR INSERT WITH CHECK (auth.uid() = submitted_by);
-CREATE POLICY "Admins can view all submissions" ON property_submissions FOR ALL USING (
-    EXISTS (SELECT 1 FROM users WHERE id = auth.uid() AND role = 'admin')
-);
+-- Property amenities table policies
+CREATE POLICY "Anyone can view property amenities" ON property_amenities
+    FOR SELECT USING (true);
 
--- Saved searches policies
-CREATE POLICY "Users can manage their own saved searches" ON saved_searches FOR ALL USING (auth.uid() = user_id);
+CREATE POLICY "Property owners can manage property amenities" ON property_amenities
+    FOR ALL USING (
+        EXISTS (
+            SELECT 1 FROM properties 
+            WHERE properties.id = property_amenities.property_id 
+            AND properties.owner_id = auth.uid()
+        )
+    );
 
--- Property views policies  
-CREATE POLICY "Anyone can create property views" ON property_views FOR INSERT WITH CHECK (true);
-CREATE POLICY "Users can view their own property views" ON property_views FOR SELECT USING (auth.uid() = user_id);
-CREATE POLICY "Property owners can view views of their properties" ON property_views FOR SELECT USING (
-    EXISTS (SELECT 1 FROM properties WHERE id = property_id AND owner_id = auth.uid())
-);
-CREATE POLICY "Admins can view all property views" ON property_views FOR ALL USING (
-    EXISTS (SELECT 1 FROM users WHERE id = auth.uid() AND role = 'admin')
-);
+-- Property images table policies
+CREATE POLICY "Anyone can view property images" ON property_images
+    FOR SELECT USING (true);
 
--- Notifications policies
-CREATE POLICY "Users can view their own notifications" ON notifications FOR SELECT USING (auth.uid() = user_id);
-CREATE POLICY "Users can update their own notifications" ON notifications FOR UPDATE USING (auth.uid() = user_id);
-CREATE POLICY "System can create notifications" ON notifications FOR INSERT WITH CHECK (true);
-CREATE POLICY "Admins can manage all notifications" ON notifications FOR ALL USING (
-    EXISTS (SELECT 1 FROM users WHERE id = auth.uid() AND role = 'admin')
-);
+CREATE POLICY "Property owners can manage property images" ON property_images
+    FOR ALL USING (
+        EXISTS (
+            SELECT 1 FROM properties 
+            WHERE properties.id = property_images.property_id 
+            AND properties.owner_id = auth.uid()
+        )
+    );
 
--- =============================================
--- 4. TRIGGERS AND FUNCTIONS
--- =============================================
+-- Messages table policies
+CREATE POLICY "Users can view messages they sent or received" ON messages
+    FOR SELECT USING (auth.uid() = sender_id OR auth.uid() = receiver_id);
 
--- Function to update updated_at timestamp
-CREATE OR REPLACE FUNCTION update_updated_at_column()
-RETURNS TRIGGER AS $$
+CREATE POLICY "Users can send messages" ON messages
+    FOR INSERT WITH CHECK (auth.uid() = sender_id);
+
+CREATE POLICY "Users can update their own messages" ON messages
+    FOR UPDATE USING (auth.uid() = sender_id);
+
+-- Reviews table policies
+CREATE POLICY "Anyone can view approved reviews" ON reviews
+    FOR SELECT USING (is_approved = true);
+
+CREATE POLICY "Users can view their own reviews" ON reviews
+    FOR SELECT USING (auth.uid() = reviewer_id);
+
+CREATE POLICY "Users can create reviews" ON reviews
+    FOR INSERT WITH CHECK (auth.uid() = reviewer_id);
+
+CREATE POLICY "Users can update their own reviews" ON reviews
+    FOR UPDATE USING (auth.uid() = reviewer_id);
+
+-- Favorites table policies
+CREATE POLICY "Users can view their own favorites" ON favorites
+    FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can manage their own favorites" ON favorites
+    FOR ALL USING (auth.uid() = user_id);
+```
+
+### 4. Create Functions for Data Access
+
+```sql
+-- Function to get user profile
+CREATE OR REPLACE FUNCTION get_user_profile(user_id UUID)
+RETURNS TABLE (
+    id UUID,
+    email VARCHAR,
+    name VARCHAR,
+    role VARCHAR,
+    phone_number VARCHAR,
+    avatar_url TEXT,
+    address TEXT,
+    city VARCHAR,
+    state_province VARCHAR,
+    country VARCHAR,
+    verification_status VARCHAR,
+    created_at TIMESTAMP WITH TIME ZONE
+) AS $$
 BEGIN
-    NEW.updated_at = NOW();
-    RETURN NEW;
-END;
-$$ language 'plpgsql';
-
--- Apply updated_at triggers
-CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-CREATE TRIGGER update_properties_updated_at BEFORE UPDATE ON properties FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-CREATE TRIGGER update_property_submissions_updated_at BEFORE UPDATE ON property_submissions FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-CREATE TRIGGER update_saved_searches_updated_at BEFORE UPDATE ON saved_searches FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
-
--- Function to create user profile on signup
-CREATE OR REPLACE FUNCTION public.handle_new_user()
-RETURNS trigger AS $$
-BEGIN
-    INSERT INTO public.users (id, email, name)
-    VALUES (new.id, new.email, COALESCE(new.raw_user_meta_data->>'name', ''));
-    RETURN new;
+    RETURN QUERY
+    SELECT 
+        u.id,
+        u.email,
+        u.name,
+        u.role,
+        u.phone_number,
+        u.avatar_url,
+        u.address,
+        u.city,
+        u.state_province,
+        u.country,
+        u.verification_status,
+        u.created_at
+    FROM users u
+    WHERE u.id = user_id;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Trigger for new user creation
-CREATE TRIGGER on_auth_user_created
-    AFTER INSERT ON auth.users
-    FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
-
--- Function to update property counters
-CREATE OR REPLACE FUNCTION update_property_counters()
-RETURNS TRIGGER AS $$
+-- Function to get featured properties
+CREATE OR REPLACE FUNCTION get_featured_properties(limit_count INTEGER DEFAULT 6)
+RETURNS TABLE (
+    id UUID,
+    title VARCHAR,
+    description TEXT,
+    property_type VARCHAR,
+    listing_type VARCHAR,
+    status VARCHAR,
+    address TEXT,
+    city VARCHAR,
+    price DECIMAL,
+    bedrooms INTEGER,
+    bathrooms DECIMAL,
+    sqft INTEGER,
+    is_featured BOOLEAN,
+    owner_name VARCHAR,
+    owner_avatar TEXT,
+    created_at TIMESTAMP WITH TIME ZONE
+) AS $$
 BEGIN
-    -- Update favorite count
-    IF TG_TABLE_NAME = 'favorite_properties' THEN
-        IF TG_OP = 'INSERT' THEN
-            UPDATE properties SET favorite_count = favorite_count + 1 WHERE id = NEW.property_id;
-        ELSIF TG_OP = 'DELETE' THEN
-            UPDATE properties SET favorite_count = favorite_count - 1 WHERE id = OLD.property_id;
-        END IF;
-    END IF;
-    
-    -- Update inquiry count
-    IF TG_TABLE_NAME = 'messages' AND NEW.message_type = 'inquiry' THEN
-        IF TG_OP = 'INSERT' THEN
-            UPDATE properties SET inquiry_count = inquiry_count + 1 WHERE id = NEW.property_id;
-        END IF;
-    END IF;
-    
-    RETURN COALESCE(NEW, OLD);
+    RETURN QUERY
+    SELECT 
+        p.id,
+        p.title,
+        p.description,
+        p.property_type,
+        p.listing_type,
+        p.status,
+        p.address,
+        p.city,
+        p.price,
+        p.bedrooms,
+        p.bathrooms,
+        p.sqft,
+        p.is_featured,
+        u.name as owner_name,
+        u.avatar_url as owner_avatar,
+        p.created_at
+    FROM properties p
+    LEFT JOIN users u ON p.owner_id = u.id
+    WHERE p.status IN ('approved', 'active')
+    AND p.is_featured = true
+    ORDER BY p.created_at DESC
+    LIMIT limit_count;
 END;
-$$ LANGUAGE plpgsql;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+```
 
--- Apply counter triggers
-CREATE TRIGGER update_favorite_count AFTER INSERT OR DELETE ON favorite_properties FOR EACH ROW EXECUTE FUNCTION update_property_counters();
-CREATE TRIGGER update_inquiry_count AFTER INSERT ON messages FOR EACH ROW EXECUTE FUNCTION update_property_counters();
+## Environment Variables for Vercel
 
--- =============================================
--- 5. INITIAL AMENITIES DATA
--- =============================================
+Make sure these are set in your Vercel environment variables:
 
-INSERT INTO amenities (name, category, description, sort_order) VALUES
--- Interior amenities
-('Air Conditioning', 'interior', 'Central or window unit air conditioning', 1),
-('Heating', 'interior', 'Central heating system', 2),
-('Hardwood Floors', 'interior', 'Beautiful hardwood flooring throughout', 3),
-('Carpet', 'interior', 'Carpeted floors in bedrooms and living areas', 4),
-('Tile Flooring', 'interior', 'Tile floors in kitchen and bathrooms', 5),
-('Walk-in Closet', 'interior', 'Spacious walk-in closet in master bedroom', 6),
-('Fireplace', 'interior', 'Wood-burning or gas fireplace', 7),
-('High Ceilings', 'interior', 'Vaulted or high ceilings', 8),
-('Basement', 'interior', 'Finished or unfinished basement space', 9),
-('Attic', 'interior', 'Accessible attic storage space', 10),
+```
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+NEXT_PUBLIC_SITE_URL=https://your-vercel-domain.vercel.app
+```
 
--- Appliances
-('Dishwasher', 'appliances', 'Built-in dishwasher', 11),
-('Washer/Dryer', 'appliances', 'In-unit washer and dryer', 12),
-('Refrigerator', 'appliances', 'Full-size refrigerator included', 13),
-('Stove/Oven', 'appliances', 'Electric or gas stove and oven', 14),
-('Microwave', 'appliances', 'Built-in or countertop microwave', 15),
-('Garbage Disposal', 'appliances', 'Kitchen garbage disposal unit', 16),
+## Testing the Setup
 
--- Exterior amenities
-('Balcony', 'exterior', 'Private balcony or patio', 17),
-('Patio', 'exterior', 'Outdoor patio space', 18),
-('Yard', 'exterior', 'Private front or back yard', 19),
-('Garden', 'exterior', 'Landscaped garden area', 20),
-('Pool', 'exterior', 'Swimming pool on property', 21),
-('Hot Tub', 'exterior', 'Outdoor hot tub or spa', 22),
-('Deck', 'exterior', 'Wooden deck for outdoor entertaining', 23),
-('Fence', 'exterior', 'Fenced yard for privacy', 24),
-('Garage', 'exterior', 'Attached or detached garage', 25),
-('Carport', 'exterior', 'Covered parking space', 26),
-('Driveway', 'exterior', 'Private driveway', 27),
+After running the SQL above:
 
--- Security
-('Security System', 'security', 'Home security system installed', 28),
-('Gated Community', 'security', 'Property in gated community', 29),
-('Doorman', 'security', '24-hour doorman service', 30),
-('Intercom', 'security', 'Intercom system for building access', 31),
+1. **Check if tables exist**: Go to Supabase Dashboard → Table Editor
+2. **Test the connection**: The Properties component will show database status
+3. **Verify data**: You should see 5 test properties from Rwanda
 
--- Community amenities
-('Gym/Fitness Center', 'community', 'On-site fitness facilities', 32),
-('Playground', 'community', 'Children''s playground on property', 33),
-('Tennis Court', 'community', 'Tennis court access', 34),
-('Basketball Court', 'community', 'Basketball court on property', 35),
-('Clubhouse', 'community', 'Community clubhouse', 36),
-('Business Center', 'community', 'Business center with computers and printers', 37),
+The infinite recursion error should be fixed, and the login/register should work properly now.
 
--- Accessibility
-('Wheelchair Accessible', 'accessibility', 'Wheelchair accessible entrances and bathrooms', 38),
-('Elevator', 'accessibility', 'Elevator access to upper floors', 39),
-('Ramp Access', 'accessibility', 'Ramp access to entrance', 40),
-
--- General
-('Pet Friendly', 'general', 'Pets allowed with restrictions', 41),
-('Furnished', 'general', 'Fully furnished unit', 42),
-('Utilities Included', 'general', 'Some or all utilities included in rent', 43),
-('Internet Included', 'general', 'High-speed internet included', 44),
-('Cable TV', 'general', 'Cable TV service included', 45),
-('Storage Unit', 'general', 'Additional storage space available', 46),
-('Concierge', 'general', 'Concierge service available', 47),
-('Parking Space', 'general', 'Designated parking space included', 48);
